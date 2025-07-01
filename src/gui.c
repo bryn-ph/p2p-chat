@@ -1,4 +1,5 @@
 #include "gui.h"
+#include "gtk/gtk.h"
 #include <stdio.h>
 
 static void print_hello(GtkWidget *widget, gpointer data) {
@@ -17,8 +18,8 @@ static void activate(GtkApplication *app, gpointer user_data) {
     GtkWindow *window = GTK_WINDOW(gtk_builder_get_object(builder, "main_window"));
     gtk_window_set_application(window, app);
 
-    GtkButton *button = GTK_BUTTON(gtk_builder_get_object(builder, "click_button"));
-    g_signal_connect(button, "clicked", G_CALLBACK(print_hello), NULL);
+    GtkLabel *label = GTK_LABEL(gtk_builder_get_object(builder, "chat_label"));
+    GtkEntry *entry = GTK_ENTRY(gtk_builder_get_object(builder, "chat_entry"));
 
     gtk_window_present(window);
     g_object_unref(builder);

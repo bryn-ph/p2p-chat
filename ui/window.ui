@@ -6,19 +6,27 @@
     <property name="default-width">1920</property>
     <property name="default-height">1080</property>
     <child>
-      <object class="GtkBox" id="content_box">
-        <property name="orientation">vertical</property>
+      <object class="GtkGrid" id="main_grid">
         <child>
-          <object class="GtkButton" id="click_button">
-            <property name="label">Click Me</property>
-            <property name="hexpand">true</property>
-            <property name="halign">fill</property>
+          <object class="GtkLabel" id="chat_label">
+            <property name="label">Chat</property>
             <property name="vexpand">true</property>
             <property name="valign">fill</property>
+            <layout>
+              <property name="column">0</property>
+              <property name="row">0</property>
+            </layout>
           </object>
         </child>
         <child>
-          <object class="GtkStack" id="stack"/>
+          <object class="GtkEntry" id="chat_entry">
+            <property name="hexpand">true</property>
+            <property name="halign">fill</property>
+            <layout>
+              <property name="column">0</property>
+              <property name="row">1</property>
+            </layout>
+          </object>
         </child>
       </object>
     </child>
