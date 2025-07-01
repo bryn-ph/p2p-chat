@@ -1,5 +1,6 @@
 # p2p-chat
 ## How to run
-<pre>gcc $(pkg-config --cflags gtk4) -o hello-world-gtk main.c $(pkg-config --libs gtk4)</pre>
+<pre>Execute ~$ make run to build and run application.</pre>
+<pre>Execute ~$ make clean to clean built object files.</pre>
 /
 Get a load of this guy
