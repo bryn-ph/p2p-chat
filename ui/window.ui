@@ -2,9 +2,9 @@
 <interface>
   <requires lib="gtk" version="4.0"/>
   <object class="GtkApplicationWindow" id="main_window">
-    <property name="title" translatable="yes">Hello World</property>
-    <property name="default-width">600</property>
-    <property name="default-height">400</property>
+    <property name="title" translatable="yes">P2PC</property>
+    <property name="default-width">1920</property>
+    <property name="default-height">1080</property>
     <child>
       <object class="GtkBox" id="content_box">
         <property name="orientation">vertical</property>
