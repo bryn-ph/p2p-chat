@@ -68,14 +68,20 @@ int main() {
 
   // Read msg from client
   char buffer[1024];
-  #ifdef _WIN32
-    int RECIEVE_STATUS = recv(client_fd, buffer, sizeof(buffer) - 1, 0);
-  #else
-    int RECIEVE_STATUS = read(client_fd, buffer, sizeof(buffer) - 1);
-  #endif
-  if (RECIEVE_STATUS > 0) {
+  int RECIEVE_STATUS;
+
+  while (1) {
+    #ifdef _WIN32
+      RECIEVE_STATUS = recv(client_fd, buffer, sizeof(buffer) - 1, 0);
+    #else
+      RECIEVE_STATUS = read(client_fd, buffer, sizeof(buffer) - 1);
+    #endif
+
+    if (RECIEVE_STATUS > 0) {
       buffer[RECIEVE_STATUS] = '\0';
+      buffer[strcspn(buffer, "\r\n")] = '\0';
       printf("Received from client: %s\n", buffer);
+    }
   }
 
   CLOSE(client_fd);

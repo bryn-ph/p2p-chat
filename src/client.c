@@ -57,15 +57,27 @@ int main(int argc, char *argv[]) {
   printf("Connected to %s on port 8080\n", argAddr);
 
   // Write data to server
-  char data[] = "Hello world!";
-  int datalen = strlen(data);
-  #ifdef _WIN32
-    int SEND_STATUS = send(fd, data, datalen, 0) == -1;
-  #else
-    int SEND_STATUS = write(fd, data, datalen) == -1;
-  #endif
-  if (SEND_STATUS) {
-    printf("Could not write data\n");
+  char buffer[1024];
+  
+  while (1) {
+    printf("Enter message: ");
+    if (!fgets(buffer, sizeof(buffer), stdin)) {
+      printf("Wadafuq fgets error!?!");
+      break;
+    }
+
+    // Remove newline
+    buffer[strcspn(buffer, "\r\n")] = '\0';
+
+    #ifdef _WIN32
+      int SEND_STATUS = send(fd, buffer, strlen(buffer), 0) == -1;
+    #else
+      int SEND_STATUS = write(fd, buffer, strlen(buffer)) == -1;
+    #endif
+    if (SEND_STATUS) {
+      printf("Could not write data\n");
+    }
+    printf("Sending msg\n");
   }
 
   CLOSE(fd);
