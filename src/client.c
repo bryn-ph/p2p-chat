@@ -3,17 +3,17 @@
 #include <string.h>
 #include <unistd.h>
 #include <sys/types.h>
-#ifndef _WIN32
-  #include <sys/socket.h>
-  #include <netinet/in.h>
-  #include <arpa/inet.h>
-  #define SOCKET_TYPE int
-  #define CLOSE CLOSE
-#else
+#ifdef _WIN32
   #include <winsock2.h>
   #include <ws2tcpip.h>
   #define SOCKET_TYPE SOCKET
   #define CLOSE closesocket
+#else
+  #include <sys/socket.h>
+  #include <netinet/in.h>
+  #include <arpa/inet.h>
+  #define SOCKET_TYPE int
+  #define CLOSE close
 #endif
 
 int main(int argc, char *argv[]) {
