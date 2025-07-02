@@ -3,12 +3,29 @@
 #include <string.h>
 #include <unistd.h>
 #include <sys/types.h>
-#include <sys/socket.h>
-#include <netinet/in.h>
-#include <arpa/inet.h>
+#ifndef _WIN32
+  #include <sys/socket.h>
+  #include <netinet/in.h>
+  #include <arpa/inet.h>
+  #define SOCKET_TYPE int
+  #define CLOSE CLOSE
+#else
+  #include <winsock2.h>
+  #include <ws2tcpip.h>
+  #define SOCKET_TYPE SOCKET
+  #define CLOSE closesocket
+#endif
 
 int main() {
-  int fd;
+  #ifdef _WIN32
+    WSADATA wsaData;
+    if (WSAStartup(MAKEWORD(2, 2), &wsaData) != 0) {
+      printf("WSAStartup failed\n");
+      exit(EXIT_FAILURE);
+    }
+  #endif
+
+  SOCKET_TYPE fd;
   struct sockaddr_in addr;
 
   fd = socket(AF_INET, SOCK_STREAM, 0);
@@ -24,14 +41,14 @@ int main() {
 
   if (bind(fd, (struct sockaddr *)&addr, sizeof(addr)) == -1) {
     printf("Kappa Chungus this is not netWORKING BIND\n");
-    close(fd);
+    CLOSE(fd);
     exit(EXIT_FAILURE);
   }
 
   // Listen for incoming connections
   if (listen(fd, 5) == -1) {
     printf("OOFT cannot listen\n");
-    close(fd);
+    CLOSE(fd);
     exit(EXIT_FAILURE);
   }
 
@@ -40,10 +57,10 @@ int main() {
   // Accept incoming connection
   struct sockaddr_in client_addr;
   socklen_t client_len = sizeof(client_addr);
-  int client_fd = accept(fd, (struct sockaddr *)&client_addr, &client_len);
+  SOCKET_TYPE client_fd = accept(fd, (struct sockaddr *)&client_addr, &client_len);
   if (client_fd == -1) {
     printf("shocka client_fd fail\n");
-    close(fd);
+    CLOSE(fd);
     exit(EXIT_FAILURE);
   }
 
@@ -51,14 +68,18 @@ int main() {
 
   // Read msg from client
   char buffer[1024];
-  int n = read(client_fd, buffer, sizeof(buffer) - 1);
-  if (n > 0) {
-      buffer[n] = '\0';
+  #ifdef _WIN32
+    int RECIEVE_STATUS = recv(client_fd, buffer, sizeof(buffer) - 1, 0);
+  #else
+    int RECIEVE_STATUS = read(client_fd, buffer, sizeof(buffer) - 1);
+  #endif
+  if (RECIEVE_STATUS > 0) {
+      buffer[RECIEVE_STATUS] = '\0';
       printf("Received from client: %s\n", buffer);
   }
 
-  close(client_fd);
-  close(fd);
+  CLOSE(client_fd);
+  CLOSE(fd);
 
   return 0;
 }

@@ -3,12 +3,29 @@
 #include <string.h>
 #include <unistd.h>
 #include <sys/types.h>
-#include <sys/socket.h>
-#include <netinet/in.h>
-#include <arpa/inet.h>
+#ifndef _WIN32
+  #include <sys/socket.h>
+  #include <netinet/in.h>
+  #include <arpa/inet.h>
+  #define SOCKET_TYPE int
+  #define CLOSE CLOSE
+#else
+  #include <winsock2.h>
+  #include <ws2tcpip.h>
+  #define SOCKET_TYPE SOCKET
+  #define CLOSE closesocket
+#endif
 
 int main(int argc, char *argv[]) {
-  int fd;
+   #ifdef _WIN32
+    WSADATA wsaData;
+    if (WSAStartup(MAKEWORD(2, 2), &wsaData) != 0) {
+      printf("WSAStartup failed\n");
+      exit(EXIT_FAILURE);
+    }
+  #endif
+
+  SOCKET_TYPE fd;
   struct sockaddr_in addr;
   char *argAddr= argv[1];
 
@@ -22,7 +39,7 @@ int main(int argc, char *argv[]) {
 
   memset(&addr, 0, sizeof(addr));  
   addr.sin_family = AF_INET;
-  // addr.sin_port = htons(8080);
+  addr.sin_port = htons(8080);
   if (inet_pton(AF_INET, argAddr, &addr.sin_addr) <= 0) {
     printf("Invalid address\n");
     exit(EXIT_FAILURE);
@@ -31,9 +48,9 @@ int main(int argc, char *argv[]) {
   // Connect to server
   printf("Trying to connect to server\n");
   socklen_t addrlen = sizeof(addr);
-  if (connect(fd, (struct sockaddr *) &addr, addrlen)) {
+  if (connect(fd, (struct sockaddr *) &addr, addrlen) == -1) {
     printf("OOFT cannot connect\n");
-    close(fd);
+    CLOSE(fd);
     exit(EXIT_FAILURE);
   }
 
@@ -42,12 +59,16 @@ int main(int argc, char *argv[]) {
   // Write data to server
   char data[] = "Hello world!";
   int datalen = strlen(data);
-
-  if (write(fd, data, datalen) == -1) {
+  #ifdef _WIN32
+    int SEND_STATUS = send(fd, data, datalen, 0) == -1;
+  #else
+    int SEND_STATUS = write(fd, data, datalen) == -1;
+  #endif
+  if (SEND_STATUS) {
     printf("Could not write data\n");
   }
 
-  close(fd);
+  CLOSE(fd);
 
   return 0;
 }
