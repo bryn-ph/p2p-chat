@@ -3,6 +3,7 @@
 #include <string.h>
 #include <unistd.h>
 #include <sys/types.h>
+#include <signal.h>
 #ifdef _WIN32
   #include <winsock2.h>
   #include <ws2tcpip.h>
@@ -15,6 +16,13 @@
   #define SOCKET_TYPE int
   #define CLOSE close
 #endif
+
+volatile sig_atomic_t stop = 0;
+void handle_sigint(int sig) {
+  (void)sig;
+  stop = 1;
+  printf("\nCaught Ctrl+C. Exiting...\n");
+}
 
 int main(int argc, char *argv[]) {
    #ifdef _WIN32
@@ -56,12 +64,16 @@ int main(int argc, char *argv[]) {
 
   printf("Connected to %s on port 8080\n", argAddr);
 
+  // Signal Handling
+  signal(SIGINT, handle_sigint);
+
   // Write data to server
   char buffer[1024];
   
-  while (1) {
+  while (!stop) {
     printf("Enter message: ");
     if (!fgets(buffer, sizeof(buffer), stdin)) {
+      if (stop) break;
       printf("Wadafuq fgets error!?!");
       break;
     }
