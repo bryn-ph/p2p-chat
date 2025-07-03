@@ -93,26 +93,26 @@ int main(int argc, char *argv[]) {
     buffer[strcspn(buffer, "\r\n")] = '\0';
 
     #ifdef _WIN32
-      int SEND_STATUS = send(fd, buffer, strlen(buffer), 0) == -1;
+      int send_status = send(fd, buffer, strlen(buffer), 0) == -1;
     #else
-      ssize_t SEND_STATUS = write(fd, buffer, strlen(buffer)) == -1;
+      ssize_t send_status = write(fd, buffer, strlen(buffer)) == -1;
     #endif
 
     // Check if server is still connected
     char probe;
-    ssize_t status = recv(fd, &probe, 1, MSG_PEEK | MSG_DONTWAIT);
+    ssize_t server_status = recv(fd, &probe, 1, MSG_PEEK | MSG_DONTWAIT);
 
-    if (status == 0) {
+    if (server_status == 0) {
         // Server closed the connection gracefully
         printf("Server disconnected (gracefully)\n");
         break;
-    } else if (status < 0 && errno != EAGAIN && errno != EWOULDBLOCK) {
+    } else if (server_status < 0 && errno != EAGAIN && errno != EWOULDBLOCK) {
         // Error while probing socket
         perror("recv (checking socket state)");
         break;
     }
 
-    if (SEND_STATUS < 0) {
+    if (send_status < 0) {
       perror("Could not write data");
     }
   }

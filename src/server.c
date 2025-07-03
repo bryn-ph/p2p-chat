@@ -106,20 +106,16 @@ int main() {
 
   // Read msg from client
   char buffer[1024];
-  int RECIEVE_STATUS;
+  int receive_status;
 
   while (!stop) {
-    #ifdef _WIN32
-      RECIEVE_STATUS = recv(client_fd, buffer, sizeof(buffer) - 1, 0);
-    #else
-      RECIEVE_STATUS = read(client_fd, buffer, sizeof(buffer) - 1);
-    #endif
+    receive_status = recv(client_fd, buffer, sizeof(buffer) - 1, 0);
 
-    if (RECIEVE_STATUS > 0) {
-      buffer[RECIEVE_STATUS] = '\0';
+    if (receive_status > 0) {
+      buffer[receive_status] = '\0';
       buffer[strcspn(buffer, "\r\n")] = '\0';
       printf("Received from client: %s\n", buffer);
-    }else if (RECIEVE_STATUS == 0) {
+    }else if (receive_status == 0) {
       printf("Client disconnected\n");
       break;
     }else {
