@@ -26,13 +26,13 @@ void handle_sigint(int sig) {
 }
 
 int main(int argc, char *argv[]) {
-   #ifdef _WIN32
-    WSADATA wsaData;
-    if (WSAStartup(MAKEWORD(2, 2), &wsaData) != 0) {
-      printf("WSAStartup failed\n");
-      exit(EXIT_FAILURE);
-    }
-  #endif
+#ifdef _WIN32
+  WSADATA wsaData;
+  if (WSAStartup(MAKEWORD(2, 2), &wsaData) != 0) {
+    printf("WSAStartup failed\n");
+    exit(EXIT_FAILURE);
+  }
+#endif
 
   SOCKET_TYPE fd;
   struct sockaddr_in addr;
@@ -67,16 +67,16 @@ int main(int argc, char *argv[]) {
 
   // Signal Handling
   // TODO: see if we can make windows interrupt fgets
-  #ifdef _WIN32
-    signal(SIGINT, handle_sigint);
-  #else
-    struct sigaction sa;
-    memset(&sa, 0, sizeof(sa));
-    sa.sa_handler = handle_sigint;
-    sigemptyset(&sa.sa_mask);
-    sa.sa_flags = 0;
-    sigaction(SIGINT, &sa, NULL);
-  #endif
+#ifdef _WIN32
+  signal(SIGINT, handle_sigint);
+#else
+  struct sigaction sa;
+  memset(&sa, 0, sizeof(sa));
+  sa.sa_handler = handle_sigint;
+  sigemptyset(&sa.sa_mask);
+  sa.sa_flags = 0;
+  sigaction(SIGINT, &sa, NULL);
+#endif
 
   // Write data to server
   char buffer[1024];
@@ -92,11 +92,11 @@ int main(int argc, char *argv[]) {
     // Remove newline
     buffer[strcspn(buffer, "\r\n")] = '\0';
 
-    #ifdef _WIN32
-      int send_status = send(fd, buffer, strlen(buffer), 0) == -1;
-    #else
-      ssize_t send_status = write(fd, buffer, strlen(buffer)) == -1;
-    #endif
+#ifdef _WIN32
+    int send_status = send(fd, buffer, strlen(buffer), 0) == -1;
+#else
+    ssize_t send_status = write(fd, buffer, strlen(buffer)) == -1;
+#endif
 
     // Check if server is still connected
     char probe;

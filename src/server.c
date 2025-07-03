@@ -27,13 +27,13 @@ void handle_sigint(int sig) {
 }
 
 int main() {
-  #ifdef _WIN32
-    WSADATA wsaData;
-    if (WSAStartup(MAKEWORD(2, 2), &wsaData) != 0) {
-      printf("WSAStartup failed\n");
-      exit(EXIT_FAILURE);
-    }
-  #endif
+#ifdef _WIN32
+  WSADATA wsaData;
+  if (WSAStartup(MAKEWORD(2, 2), &wsaData) != 0) {
+    printf("WSAStartup failed\n");
+    exit(EXIT_FAILURE);
+  }
+#endif
 
   SOCKET_TYPE fd;
   struct sockaddr_in addr;
@@ -77,29 +77,29 @@ int main() {
   printf("Client connected!\n");
 
   // Set client socket to non-blocking (can be interrupted by SIGINT etc...)
-  #ifdef _WIN32
-    u_long mode = 1;  // 1 = non-blocking
-    if (ioctlsocket(client_fd, FIONBIO, &mode) != 0) {
-      printf("Failed to set non-blocking mode\n");
-      CLOSE(client_fd);
-      CLOSE(fd);
-      exit(EXIT_FAILURE);
-    }
-  #else
-    int flags = fcntl(client_fd, F_GETFL, 0);
-    if (flags == -1) {
-      perror("fcntl get");
-      CLOSE(client_fd);
-      CLOSE(fd);
-      exit(EXIT_FAILURE);
-    }
-    if (fcntl(client_fd, F_SETFL, flags | O_NONBLOCK) == -1) {
-      perror("fcntl set");
-      CLOSE(client_fd);
-      CLOSE(fd);
-      exit(EXIT_FAILURE);
-    }
-  #endif
+#ifdef _WIN32
+  u_long mode = 1;  // 1 = non-blocking
+  if (ioctlsocket(client_fd, FIONBIO, &mode) != 0) {
+    printf("Failed to set non-blocking mode\n");
+    CLOSE(client_fd);
+    CLOSE(fd);
+    exit(EXIT_FAILURE);
+  }
+#else
+  int flags = fcntl(client_fd, F_GETFL, 0);
+  if (flags == -1) {
+    perror("fcntl get");
+    CLOSE(client_fd);
+    CLOSE(fd);
+    exit(EXIT_FAILURE);
+  }
+  if (fcntl(client_fd, F_SETFL, flags | O_NONBLOCK) == -1) {
+    perror("fcntl set");
+    CLOSE(client_fd);
+    CLOSE(fd);
+    exit(EXIT_FAILURE);
+  }
+#endif
 
   // Signal handling
   signal(SIGINT, handle_sigint);
@@ -120,29 +120,29 @@ int main() {
       break;
     }else {
       // Handles both sigint and error
-      #ifdef _WIN32
-        int err = WSAGetLastError();
-        if (err == WSAEWOULDBLOCK) {
-          // No data available
-          usleep(100000);
-          continue;
-        } else {
-          printf("recv failed with error: %d\n", err);
-          break;
-        }
-      #else
-        if (errno == EAGAIN || errno == EWOULDBLOCK) {
-          // No data available
-          usleep(100000);  // Sleep 100ms to prevent busy loop
-          continue;
-        } else if (errno == EINTR) {
-          // Interrupted by signal, try again
-          continue;
-        } else {
-          perror("read failed");
-          break;
-        }
-      #endif
+#ifdef _WIN32
+      int err = WSAGetLastError();
+      if (err == WSAEWOULDBLOCK) {
+        // No data available
+        usleep(100000);
+        continue;
+      } else {
+        printf("recv failed with error: %d\n", err);
+        break;
+      }
+#else
+      if (errno == EAGAIN || errno == EWOULDBLOCK) {
+        // No data available
+        usleep(100000);  // Sleep 100ms to prevent busy loop
+        continue;
+      } else if (errno == EINTR) {
+        // Interrupted by signal, try again
+        continue;
+      } else {
+        perror("read failed");
+        break;
+      }
+#endif
     }
   }
 
