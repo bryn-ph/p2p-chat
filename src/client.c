@@ -117,9 +117,9 @@ int main(int argc, char *argv[]) {
     }
   }
 
-  printf("Closing!");
   CLOSE(fd);
 
+  printf("Client shutting down!\n");
   return 0;
 }
 

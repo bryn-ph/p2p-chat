@@ -146,9 +146,9 @@ int main() {
     }
   }
 
-  printf("Closing!");
   CLOSE(client_fd);
   CLOSE(fd);
 
+  printf("Server shutting down.\n");
   return 0;
 }
