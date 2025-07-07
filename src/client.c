@@ -161,6 +161,11 @@ int main(int argc, char *argv[]) {
     }
   }
 
+// WSA cleanup for Windows
+#ifdef _WIN32
+  WSACleanup();
+#endif
+
   CLOSE(fd);
 
   printf("Client shutting down!\n");

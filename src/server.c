@@ -147,6 +147,11 @@ int main() {
     }
   }
 
+// WSA cleanup for Windows
+#ifdef _WIN32
+  WSACleanup();
+#endif
+
   CLOSE(client_fd);
   CLOSE(fd);
 
