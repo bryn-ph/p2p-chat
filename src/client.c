@@ -65,6 +65,30 @@ int main(int argc, char *argv[]) {
 
   printf("Connected to %s on port 8080\n", argAddr);
 
+   // Set client socket to non-blocking (can be interrupted by SIGINT etc...)
+#ifdef _WIN32
+    u_long mode = 1;  // 1 = non-blocking
+    if (ioctlsocket(fd, FIONBIO, &mode) != 0) {
+      printf("Failed to set non-blocking mode\n");
+      CLOSE(fd);
+      exit(EXIT_FAILURE);
+  }
+#else
+  int flags = fcntl(client_fd, F_GETFL, 0);
+  if (flags == -1) {
+    perror("fcntl get");
+    CLOSE(client_fd);
+    CLOSE(fd);
+    exit(EXIT_FAILURE);
+  }
+  if (fcntl(client_fd, F_SETFL, flags | O_NONBLOCK) == -1) {
+    perror("fcntl set");
+    CLOSE(client_fd);
+    CLOSE(fd);
+    exit(EXIT_FAILURE);
+  }
+#endif
+
   // Signal Handling
   // TODO: see if we can make windows interrupt fgets
 #ifdef _WIN32
@@ -100,16 +124,36 @@ int main(int argc, char *argv[]) {
 
     // Check if server is still connected
     char probe;
-    ssize_t server_status = recv(fd, &probe, 1, MSG_PEEK | MSG_DONTWAIT);
+    ssize_t server_status = recv(fd, &probe, 1, 0);
 
     if (server_status == 0) {
-        // Server closed the connection gracefully
-        printf("Server disconnected (gracefully)\n");
+      // Server closed the connection gracefully
+      printf("Server disconnected (gracefully)\n");
+      break;
+    } else {
+#ifdef _WIN32
+      int err = WSAGetLastError();
+      if (err == WSAEWOULDBLOCK) {
+        // No data available
+        usleep(100000);
+        continue;
+      } else {
+        printf("recv failed with error: %d\n", err);
         break;
-    } else if (server_status < 0 && errno != EAGAIN && errno != EWOULDBLOCK) {
-        // Error while probing socket
-        perror("recv (checking socket state)");
+      }
+#else
+      if (errno == EAGAIN || errno == EWOULDBLOCK) {
+        // No data available
+        usleep(100000);  // Sleep 100ms to prevent busy loop
+        continue;
+      } else if (errno == EINTR) {
+        // Interrupted by signal, try again
+        continue;
+      } else {
+        perror("read failed");
         break;
+      }
+#endif
     }
 
     if (send_status < 0) {

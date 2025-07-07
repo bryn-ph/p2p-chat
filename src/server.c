@@ -103,6 +103,7 @@ int main() {
 
   // Signal handling
   signal(SIGINT, handle_sigint);
+  //TODO add signal handling from client.c
 
   // Read msg from client
   char buffer[1024];
