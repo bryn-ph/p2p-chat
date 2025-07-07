@@ -102,8 +102,16 @@ int main() {
 #endif
 
   // Signal handling
+#ifdef _WIN32
   signal(SIGINT, handle_sigint);
-  //TODO add signal handling from client.c
+#else
+  struct sigaction sa;
+  memset(&sa, 0, sizeof(sa));
+  sa.sa_handler = handle_sigint;
+  sigemptyset(&sa.sa_mask);
+  sa.sa_flags = 0;
+  sigaction(SIGINT, &sa, NULL);
+#endif
 
   // Read msg from client
   char buffer[1024];

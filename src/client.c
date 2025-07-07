@@ -90,7 +90,6 @@ int main(int argc, char *argv[]) {
 #endif
 
   // Signal Handling
-  // TODO: see if we can make windows interrupt fgets
 #ifdef _WIN32
   signal(SIGINT, handle_sigint);
 #else
