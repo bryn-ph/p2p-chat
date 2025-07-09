@@ -11,7 +11,7 @@ endif
 
 # Source and object files
 SRC_DIR = src
-SRC_FILES = $(SRC_DIR)/main.c $(SRC_DIR)/gui.c
+SRC_FILES = $(SRC_DIR)/main.c $(SRC_DIR)/gui.c $(SRC_DIR)/networking.c
 OBJ_FILES = $(SRC_FILES:.c=.o)
 TARGET = main
 
