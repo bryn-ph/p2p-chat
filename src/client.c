@@ -11,6 +11,7 @@
   #define SOCKET_TYPE SOCKET
   #define CLOSE closesocket
 #else
+  #include <fcntl.h>
   #include <sys/socket.h>
   #include <netinet/in.h>
   #include <arpa/inet.h>
@@ -74,16 +75,14 @@ int main(int argc, char *argv[]) {
       exit(EXIT_FAILURE);
   }
 #else
-  int flags = fcntl(client_fd, F_GETFL, 0);
+  int flags = fcntl(fd, F_GETFL, 0);
   if (flags == -1) {
     perror("fcntl get");
-    CLOSE(client_fd);
     CLOSE(fd);
     exit(EXIT_FAILURE);
   }
-  if (fcntl(client_fd, F_SETFL, flags | O_NONBLOCK) == -1) {
+  if (fcntl(fd, F_SETFL, flags | O_NONBLOCK) == -1) {
     perror("fcntl set");
-    CLOSE(client_fd);
     CLOSE(fd);
     exit(EXIT_FAILURE);
   }

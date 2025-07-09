@@ -6,7 +6,6 @@
 #include <unistd.h>
 #include <sys/types.h>
 #include <signal.h>
-#include <fcntl.h>
 #include <errno.h>
 #ifdef _WIN32
   #include <winsock2.h>
@@ -14,6 +13,7 @@
   #define SOCKET_TYPE SOCKET
   #define CLOSE closesocket
 #else
+  #include <fcntl.h>
   #include <sys/socket.h>
   #include <netinet/in.h>
   #include <arpa/inet.h>
