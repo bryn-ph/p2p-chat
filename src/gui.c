@@ -1,4 +1,5 @@
 #include "gui.h"
+#include "gtk/gtk.h"
 #include "networking.h"
 #include <stdio.h>
 
@@ -8,7 +9,7 @@ static void on_entry_activate(GtkEntry *entry, gpointer user_data) {
   g_print("Entered text: %s\n", text);
 
   if (ctx->socket_fd != 1) {
-  #ifdef _WIN32
+#ifdef _WIN32
     int send_status = send(ctx->socket_fd, text, strlen(text), 0) == -1;
 #else
     ssize_t send_status = write(ctx->socket_fd, text, strlen(text)) == -1;
@@ -16,6 +17,8 @@ static void on_entry_activate(GtkEntry *entry, gpointer user_data) {
   }else {
     perror("FD is not defined");
   }
+
+  gtk_editable_set_text(GTK_EDITABLE(entry), "");
 }
 
 static void activate(GtkApplication *app, gpointer user_data) {
