@@ -1,4 +1,6 @@
 #include "networking.h"
+#include <netinet/in.h>
+#include <pthread.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -10,8 +12,6 @@
   #include <ws2tcpip.h>
 #else
   #include <fcntl.h>
-  #include <sys/socket.h>
-  #include <netinet/in.h>
   #include <arpa/inet.h>
 #endif
 
@@ -20,6 +20,173 @@ void handle_sigint(int sig) {
   (void)sig;
   stop = 1;
   printf("\nCaught Ctrl+C. Exiting...\n");
+}
+
+static void* client_thread(void* arg) {
+  AppContext* ctx = (AppContext*)arg;
+
+  // Write data to server
+  char buffer[1024];
+  
+  while (!stop) {
+    // Check if server is still connected
+    ssize_t server_msg = recv(ctx->socket_fd, buffer, sizeof(buffer) - 1, 0);
+
+    if (server_msg > 0 ) {
+      buffer[server_msg] = '\0';
+      buffer[strcspn(buffer, "\r\n")] = '\0';
+      printf("Received from client: %s\n", buffer);
+    } else if (server_msg == 0) {
+      // Server closed the connection gracefully
+      printf("Server disconnected (gracefully)\n");
+      break;
+    } else {
+#ifdef _WIN32
+      int err = WSAGetLastError();
+      if (err == WSAEWOULDBLOCK) {
+        // No data available
+        usleep(100000);
+        continue;
+      } else {
+        printf("recv failed with error: %d\n", err);
+        break;
+      }
+#else
+      if (errno == EAGAIN || errno == EWOULDBLOCK) {
+        // No data available
+        usleep(100000);  // Sleep 100ms to prevent busy loop
+        continue;
+      } else if (errno == EINTR) {
+        // Interrupted by signal, try again
+        continue;
+      } else {
+        perror("read failed");
+        break;
+      }
+#endif
+    }
+  }
+
+  CLOSE(ctx->socket_fd);
+  ctx->socket_fd = -1;
+  return NULL;
+}
+
+static void* peer_handler_thread(void *arg) {
+  PeerConnection *peer = (PeerConnection*)arg;
+  char buffer[1024];
+
+  printf("New peer connected from %s:%d\n",
+      inet_ntoa(peer->peer_addr.sin_addr),
+      ntohs(peer->peer_addr.sin_port));
+
+  while (!stop) {
+    ssize_t receive_status = recv(peer->socket_fd, buffer, sizeof(buffer) - 1, 0);
+
+    if (receive_status > 0) {
+      buffer[receive_status] = '\0';
+      buffer[strcspn(buffer, "\r\n")] = '\0';
+      printf("%s:%d: %s\n",
+          inet_ntoa(peer->peer_addr.sin_addr),
+          ntohs(peer->peer_addr.sin_port),
+          buffer);
+    }else if (receive_status == 0) {
+      printf("%s:%d disconnected\n",
+          inet_ntoa(peer->peer_addr.sin_addr),
+          ntohs(peer->peer_addr.sin_port));
+      break;
+    }else {
+      // Handles both sigint and error
+#ifdef _WIN32
+      int err = WSAGetLastError();
+      if (err == WSAEWOULDBLOCK) {
+        // No data available
+        usleep(100000);
+        continue;
+      } else {
+        printf("recv failed with error: %d\n", err);
+        break;
+      }
+#else
+      if (errno == EAGAIN || errno == EWOULDBLOCK) {
+        // No data available
+        usleep(100000);  // Sleep 100ms to prevent busy loop
+        continue;
+      } else if (errno == EINTR) {
+        // Interrupted by signal, try again
+        continue;
+      } else {
+        perror("read failed");
+        break;
+      }
+#endif
+    }
+  }
+
+  CLOSE(peer->socket_fd);
+  free(peer);
+  return NULL;
+}
+void* listener_thread(void *arg) {
+  AppContext *ctx = (AppContext*)arg;
+
+#ifdef _WIN32
+  WSADATA wsaData;
+  if (WSAStartup(MAKEWORD(2, 2), &wsaData) != 0) {
+    printf("WSAStartup failed\n");
+    exit(EXIT_FAILURE);
+  }
+#endif
+
+  struct sockaddr_in addr;
+
+  ctx->listening_fd = socket(AF_INET, SOCK_STREAM, 0);
+  if (ctx->listening_fd == -1) {
+    perror("Kappa Chungus this is not netWORKING\n");
+    exit(EXIT_FAILURE);
+  }
+
+  memset(&addr, 0, sizeof(addr));  
+  addr.sin_family = AF_INET;
+  addr.sin_addr.s_addr = INADDR_ANY;
+  addr.sin_port = htons(8081);
+
+  if (bind(ctx->listening_fd, (struct sockaddr *)&addr, sizeof(addr)) == -1) {
+    perror("Kappa Chungus this is not netWORKING BIND\n");
+    CLOSE(ctx->listening_fd);
+    exit(EXIT_FAILURE);
+  }
+
+  // Listen for incoming connections
+  if (listen(ctx->listening_fd, 5) == -1) {
+    printf("OOFT cannot listen\n");
+    CLOSE(ctx->listening_fd);
+    exit(EXIT_FAILURE);
+  }
+
+  printf("Listening on port 8080\n");
+
+  while (!stop) {
+    PeerConnection* peer = malloc(sizeof(PeerConnection));
+    if (!peer) {
+      perror("malloc");
+      continue;
+    }
+
+    peer->addr_len = sizeof(peer->peer_addr);
+    SOCKET_TYPE peer_fd = accept(ctx->listening_fd, (struct sockaddr *)&peer->peer_addr, &peer->addr_len);
+    if (peer_fd == -1) {
+      perror("failed to accept peer");
+      free(peer);
+      continue;
+    }
+
+    peer->socket_fd = peer_fd;
+    pthread_create(&peer->thread_id, NULL, peer_handler_thread, peer);
+  }
+
+  CLOSE(ctx->listener_thread);
+  return NULL;
 }
 
 void connect_to_server(AppContext *ctx, char *addr) {
@@ -96,4 +263,10 @@ void connect_to_server(AppContext *ctx, char *addr) {
 #endif
 
   ctx->socket_fd = fd;
+
+  if (pthread_create(&ctx->client_thread, NULL, client_thread, ctx) != 0) {
+    perror("Failed to start client thread");
+    CLOSE(fd);
+    exit(EXIT_FAILURE);
+  }
 }

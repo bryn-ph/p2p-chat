@@ -8,14 +8,17 @@ static void on_entry_activate(GtkEntry *entry, gpointer user_data) {
   const char *text = gtk_editable_get_text(GTK_EDITABLE(entry));
   g_print("Entered text: %s\n", text);
 
-  if (ctx->socket_fd != 1) {
+  if (ctx->socket_fd >= 0) {
 #ifdef _WIN32
     int send_status = send(ctx->socket_fd, text, strlen(text), 0) == -1;
 #else
     ssize_t send_status = write(ctx->socket_fd, text, strlen(text)) == -1;
 #endif
+    if (send_status == -1) {
+      perror("send failed");
+    }
   }else {
-    perror("FD is not defined");
+    g_warning("FD is not defined");
   }
 
   gtk_editable_set_text(GTK_EDITABLE(entry), "");
