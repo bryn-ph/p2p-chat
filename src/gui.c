@@ -2,8 +2,9 @@
 #include "gtk/gtk.h"
 #include <stdio.h>
 
-static void print_hello(GtkWidget *widget, gpointer data) {
-    g_print("Hello World\n");
+static void on_entry_activate(GtkEntry *entry, gpointer user_data) {
+  const char *text = gtk_editable_get_text(GTK_EDITABLE(entry));
+  g_print("Entered text: %s\n", text);
 }
 
 static void activate(GtkApplication *app, gpointer user_data) {
@@ -21,6 +22,7 @@ static void activate(GtkApplication *app, gpointer user_data) {
     GtkLabel *label = GTK_LABEL(gtk_builder_get_object(builder, "chat_label"));
     GtkEntry *entry = GTK_ENTRY(gtk_builder_get_object(builder, "chat_entry"));
 
+    g_signal_connect(entry, "activate", G_CALLBACK(on_entry_activate), NULL);
     gtk_window_present(window);
     g_object_unref(builder);
 }
