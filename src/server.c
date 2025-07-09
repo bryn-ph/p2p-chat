@@ -1,3 +1,5 @@
+// To compile on windows:
+  // gcc -o server src/server.c -lws2_32
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>

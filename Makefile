@@ -1,7 +1,13 @@
 # Compiler and flags
 CC = gcc
 CFLAGS = `pkg-config --cflags gtk4`
-LDFLAGS = `pkg-config --libs gtk4`
+
+UNAME_S := $(shell uname -s)
+ifeq ($(OS),Windows_NT)
+    LDFLAGS = `pkg-config --libs gtk4` -lws2_32
+else
+    LDFLAGS = `pkg-config --libs gtk4`
+endif
 
 # Source and object files
 SRC_DIR = src
