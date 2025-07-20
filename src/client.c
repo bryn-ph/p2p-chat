@@ -49,7 +49,7 @@ int main(int argc, char *argv[]) {
 
   memset(&addr, 0, sizeof(addr));  
   addr.sin_family = AF_INET;
-  addr.sin_port = htons(8080);
+  addr.sin_port = htons(8081);
   if (inet_pton(AF_INET, argAddr, &addr.sin_addr) <= 0) {
     perror("Invalid address");
     exit(EXIT_FAILURE);

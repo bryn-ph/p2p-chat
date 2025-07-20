@@ -1,4 +1,5 @@
 #include "networking.h"
+#include "gio/gio.h"
 #include <netinet/in.h>
 #include <pthread.h>
 #include <stdio.h>
@@ -134,7 +135,7 @@ void* listener_thread(void *arg) {
   WSADATA wsaData;
   if (WSAStartup(MAKEWORD(2, 2), &wsaData) != 0) {
     printf("WSAStartup failed\n");
-    exit(EXIT_FAILURE);
+    g_application_quit(G_APPLICATION(ctx->app));
   }
 #endif
 
@@ -143,7 +144,7 @@ void* listener_thread(void *arg) {
   ctx->listening_fd = socket(AF_INET, SOCK_STREAM, 0);
   if (ctx->listening_fd == -1) {
     perror("Kappa Chungus this is not netWORKING\n");
-    exit(EXIT_FAILURE);
+    g_application_quit(G_APPLICATION(ctx->app));
   }
 
   memset(&addr, 0, sizeof(addr));  
@@ -154,35 +155,96 @@ void* listener_thread(void *arg) {
   if (bind(ctx->listening_fd, (struct sockaddr *)&addr, sizeof(addr)) == -1) {
     perror("Kappa Chungus this is not netWORKING BIND\n");
     CLOSE(ctx->listening_fd);
-    exit(EXIT_FAILURE);
+    g_application_quit(G_APPLICATION(ctx->app));
   }
 
   // Listen for incoming connections
   if (listen(ctx->listening_fd, 5) == -1) {
     printf("OOFT cannot listen\n");
     CLOSE(ctx->listening_fd);
-    exit(EXIT_FAILURE);
+    g_application_quit(G_APPLICATION(ctx->app));
   }
 
   printf("Listening on port 8080\n");
 
+  // Accept incoming connection
+  struct sockaddr_in client_addr;
+  socklen_t client_len = sizeof(client_addr);
+  SOCKET_TYPE client_fd = accept(ctx->listening_fd, (struct sockaddr *)&client_addr, &client_len);
+  if (client_fd == -1) {
+    printf("shocka client_fd fail\n");
+    CLOSE(ctx->listening_fd);
+    g_application_quit(G_APPLICATION(ctx->app));
+  }
+
+  printf("Client connected!\n");
+
+  char buffer[1024];
+  int receive_status; 
+
+   // Set client socket to non-blocking (can be interrupted by SIGINT etc...)
+#ifdef _WIN32
+    u_long mode = 1;  // 1 = non-blocking
+    if (ioctlsocket(client_fd, FIONBIO, &mode) != 0) {
+      printf("Failed to set non-blocking mode\n");
+      CLOSE(client_fd);
+      g_application_quit(G_APPLICATION(ctx->app));
+  }
+#else
+  int flags = fcntl(client_fd, F_GETFL, 0);
+  if (flags == -1) {
+    perror("fcntl get");
+    CLOSE(client_fd);
+    g_application_quit(G_APPLICATION(ctx->app));
+  }
+  if (fcntl(client_fd, F_SETFL, flags | O_NONBLOCK) == -1) {
+    perror("fcntl set");
+    CLOSE(client_fd);
+    g_application_quit(G_APPLICATION(ctx->app));
+  }
+#endif
+
   while (!stop) {
-    PeerConnection* peer = malloc(sizeof(PeerConnection));
-    if (!peer) {
-      perror("malloc");
-      continue;
-    }
+    ssize_t receive_status = recv(client_fd, buffer, sizeof(buffer) - 1, 0);
 
-    peer->addr_len = sizeof(peer->peer_addr);
-    SOCKET_TYPE peer_fd = accept(ctx->listening_fd, (struct sockaddr *)&peer->peer_addr, &peer->addr_len);
-    if (peer_fd == -1) {
-      perror("failed to accept peer");
-      free(peer);
-      continue;
+    if (receive_status > 0) {
+      buffer[receive_status] = '\0';
+      buffer[strcspn(buffer, "\r\n")] = '\0';
+      printf("%s:%d: %s\n",
+          inet_ntoa(client_addr.sin_addr),
+          ntohs(client_addr.sin_port),
+          buffer);
+    }else if (receive_status == 0) {
+      printf("%s:%d disconnected\n",
+          inet_ntoa(client_addr.sin_addr),
+          ntohs(client_addr.sin_port));
+      break;
+    }else {
+      // Handles both sigint and error
+#ifdef _WIN32
+      int err = WSAGetLastError();
+      if (err == WSAEWOULDBLOCK) {
+        // No data available
+        usleep(100000);
+        continue;
+      } else {
+        printf("recv failed with error: %d\n", err);
+        break;
+      }
+#else
+      if (errno == EAGAIN || errno == EWOULDBLOCK) {
+        // No data available
+        usleep(100000);  // Sleep 100ms to prevent busy loop
+        continue;
+      } else if (errno == EINTR) {
+        // Interrupted by signal, try again
+        continue;
+      } else {
+        perror("read failed");
+        break;
+      }
+#endif
     }
-
-    peer->socket_fd = peer_fd;
-    pthread_create(&peer->thread_id, NULL, peer_handler_thread, peer);
   }
 
   CLOSE(ctx->listener_thread);
@@ -194,7 +256,7 @@ void connect_to_server(AppContext *ctx, char *addr) {
   WSADATA wsaData;
   if (WSAStartup(MAKEWORD(2, 2), &wsaData) != 0) {
     printf("WSAStartup failed\n");
-    exit(EXIT_FAILURE);
+    g_application_quit(G_APPLICATION(ctx->app));
   }
 #endif
 
@@ -206,7 +268,7 @@ void connect_to_server(AppContext *ctx, char *addr) {
   fd = socket(AF_INET, SOCK_STREAM, 0);
   if (fd == -1) {
     perror("Kappa Chungus this is not netWORKING");
-    exit(EXIT_FAILURE);
+    g_application_quit(G_APPLICATION(ctx->app));
   }
 
   memset(&server, 0, sizeof(server));  
@@ -214,7 +276,7 @@ void connect_to_server(AppContext *ctx, char *addr) {
   server.sin_port = htons(8080);
   if (inet_pton(AF_INET, addr, &server.sin_addr) <= 0) {
     perror("Invalid address");
-    exit(EXIT_FAILURE);
+    g_application_quit(G_APPLICATION(ctx->app));
   }
 
   // Connect to server
@@ -223,7 +285,7 @@ void connect_to_server(AppContext *ctx, char *addr) {
   if (connect(fd, (struct sockaddr *) &server, addrlen) == -1) {
     perror("OOFT cannot connec");
     CLOSE(fd);
-    exit(EXIT_FAILURE);
+    g_application_quit(G_APPLICATION(ctx->app));
   }
 
   printf("Connected to %s on port 8080\n", addr);
@@ -234,19 +296,19 @@ void connect_to_server(AppContext *ctx, char *addr) {
     if (ioctlsocket(fd, FIONBIO, &mode) != 0) {
       printf("Failed to set non-blocking mode\n");
       CLOSE(fd);
-      exit(EXIT_FAILURE);
+      g_application_quit(G_APPLICATION(ctx->app));
   }
 #else
   int flags = fcntl(fd, F_GETFL, 0);
   if (flags == -1) {
     perror("fcntl get");
     CLOSE(fd);
-    exit(EXIT_FAILURE);
+    g_application_quit(G_APPLICATION(ctx->app));
   }
   if (fcntl(fd, F_SETFL, flags | O_NONBLOCK) == -1) {
     perror("fcntl set");
     CLOSE(fd);
-    exit(EXIT_FAILURE);
+    g_application_quit(G_APPLICATION(ctx->app));
   }
 #endif
 
@@ -267,6 +329,6 @@ void connect_to_server(AppContext *ctx, char *addr) {
   if (pthread_create(&ctx->client_thread, NULL, client_thread, ctx) != 0) {
     perror("Failed to start client thread");
     CLOSE(fd);
-    exit(EXIT_FAILURE);
+    g_application_quit(G_APPLICATION(ctx->app));
   }
 }

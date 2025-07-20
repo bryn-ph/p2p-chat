@@ -12,6 +12,7 @@
   #define SOCKET_TYPE int
   #define CLOSE close
 #endif
+#include <gtk/gtk.h>
 #include <signal.h>
 
 typedef struct {
@@ -19,6 +20,7 @@ typedef struct {
   pthread_t client_thread;
   SOCKET_TYPE listening_fd;
   pthread_t listener_thread;
+  GtkApplication * app;
 } AppContext;
 
 typedef struct {

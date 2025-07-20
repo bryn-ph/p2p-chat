@@ -1,4 +1,5 @@
 #include "gui.h"
+#include "glib.h"
 #include "gtk/gtk.h"
 #include "networking.h"
 #include <stdio.h>
@@ -24,6 +25,12 @@ static void on_entry_activate(GtkEntry *entry, gpointer user_data) {
   gtk_editable_set_text(GTK_EDITABLE(entry), "");
 }
 
+static void on_button_clicked(GtkButton *button, gpointer user_data) {
+  AppContext *ctx = user_data;
+  g_print("button pressed!");
+  connect_to_server(ctx, "0.0.0.0");
+}
+
 static void activate(GtkApplication *app, gpointer user_data) {
     AppContext *ctx = user_data;
     GtkBuilder *builder = gtk_builder_new();
@@ -39,8 +46,10 @@ static void activate(GtkApplication *app, gpointer user_data) {
 
     GtkLabel *label = GTK_LABEL(gtk_builder_get_object(builder, "chat_label"));
     GtkEntry *entry = GTK_ENTRY(gtk_builder_get_object(builder, "chat_entry"));
+    GtkButton *button = GTK_BUTTON(gtk_builder_get_object(builder, "connect_button"));
 
     g_signal_connect(entry, "activate", G_CALLBACK(on_entry_activate), ctx);
+    g_signal_connect(button, "clicked", G_CALLBACK(on_button_clicked), ctx);
     gtk_window_present(window);
     g_object_unref(builder);
 }

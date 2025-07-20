@@ -28,6 +28,15 @@
             </layout>
           </object>
         </child>
+        <child>
+          <object class="GtkButton" id="connect_button">
+            <property name="label">Connect</property>
+          <layout>
+            <property name="column">1</property>
+            <property name="row">1</property>
+          </layout>
+          </object>
+        </child>
       </object>
     </child>
   </object>
