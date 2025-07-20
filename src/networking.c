@@ -166,83 +166,103 @@ void* listener_thread(void *arg) {
 
   printf("Listening on port 8080\n");
 
-  // Accept incoming connection
-  struct sockaddr_in client_addr;
-  socklen_t client_len = sizeof(client_addr);
-  SOCKET_TYPE client_fd = accept(ctx->listening_fd, (struct sockaddr *)&client_addr, &client_len);
-  if (client_fd == -1) {
-    printf("shocka client_fd fail\n");
-    CLOSE(ctx->listening_fd);
-    g_application_quit(G_APPLICATION(ctx->app));
-  }
+  //TODO: Loop dis bish
+  fd_set read_fds;
+  FD_ZERO(&read_fds);
+  FD_SET(ctx->listening_fd, &read_fds);
 
-  printf("Client connected!\n");
+  struct timeval timeout;
+  timeout.tv_sec = 1;  // 1 second timeout (change as needed)
+  timeout.tv_usec = 0;
 
-  char buffer[1024];
-  int receive_status; 
-
-   // Set client socket to non-blocking (can be interrupted by SIGINT etc...)
-#ifdef _WIN32
-    u_long mode = 1;  // 1 = non-blocking
-    if (ioctlsocket(client_fd, FIONBIO, &mode) != 0) {
-      printf("Failed to set non-blocking mode\n");
-      CLOSE(client_fd);
-      g_application_quit(G_APPLICATION(ctx->app));
-  }
+#if _WIN32
+  int ret = select(0, &readfds, NULL, NULL, &timeout);
 #else
-  int flags = fcntl(client_fd, F_GETFL, 0);
-  if (flags == -1) {
-    perror("fcntl get");
-    CLOSE(client_fd);
-    g_application_quit(G_APPLICATION(ctx->app));
-  }
-  if (fcntl(client_fd, F_SETFL, flags | O_NONBLOCK) == -1) {
-    perror("fcntl set");
-    CLOSE(client_fd);
-    g_application_quit(G_APPLICATION(ctx->app));
-  }
+  int ret = select(ctx->listening_fd + 1, &read_fds, NULL, NULL, &timeout);
 #endif
 
-  while (!stop) {
-    ssize_t receive_status = recv(client_fd, buffer, sizeof(buffer) - 1, 0);
+  if (ret == -1) {
+    perror("select");
+    // handle error
+  } else if (ret == 0) {
+    // timeout, no connection yet
+    printf("No incoming connections yet\n");
+  } else if (ret > 0 && FD_ISSET(ctx->listening_fd, &read_fds)) {
+    struct sockaddr_in client_addr;
+    socklen_t client_len = sizeof(client_addr);
+    SOCKET_TYPE client_fd = accept(ctx->listening_fd, (struct sockaddr *)&client_addr, &client_len);
+    if (client_fd == -1) {
+      perror("accept");
+    } else {
+      printf("Client connected!\n");
+      // handle client_fd
+      char buffer[1024];
+      int receive_status; 
 
-    if (receive_status > 0) {
-      buffer[receive_status] = '\0';
-      buffer[strcspn(buffer, "\r\n")] = '\0';
-      printf("%s:%d: %s\n",
-          inet_ntoa(client_addr.sin_addr),
-          ntohs(client_addr.sin_port),
-          buffer);
-    }else if (receive_status == 0) {
-      printf("%s:%d disconnected\n",
-          inet_ntoa(client_addr.sin_addr),
-          ntohs(client_addr.sin_port));
-      break;
-    }else {
-      // Handles both sigint and error
+       // Set client socket to non-blocking (can be interrupted by SIGINT etc...)
 #ifdef _WIN32
-      int err = WSAGetLastError();
-      if (err == WSAEWOULDBLOCK) {
-        // No data available
-        usleep(100000);
-        continue;
-      } else {
-        printf("recv failed with error: %d\n", err);
-        break;
+        u_long mode = 1;  // 1 = non-blocking
+        if (ioctlsocket(client_fd, FIONBIO, &mode) != 0) {
+          printf("Failed to set non-blocking mode\n");
+          CLOSE(client_fd);
+          g_application_quit(G_APPLICATION(ctx->app));
       }
 #else
-      if (errno == EAGAIN || errno == EWOULDBLOCK) {
-        // No data available
-        usleep(100000);  // Sleep 100ms to prevent busy loop
-        continue;
-      } else if (errno == EINTR) {
-        // Interrupted by signal, try again
-        continue;
-      } else {
-        perror("read failed");
-        break;
+      int flags = fcntl(client_fd, F_GETFL, 0);
+      if (flags == -1) {
+        perror("fcntl get");
+        CLOSE(client_fd);
+        g_application_quit(G_APPLICATION(ctx->app));
+      }
+      if (fcntl(client_fd, F_SETFL, flags | O_NONBLOCK) == -1) {
+        perror("fcntl set");
+        CLOSE(client_fd);
+        g_application_quit(G_APPLICATION(ctx->app));
       }
 #endif
+
+      while (!stop) {
+        ssize_t receive_status = recv(client_fd, buffer, sizeof(buffer) - 1, 0);
+
+        if (receive_status > 0) {
+          buffer[receive_status] = '\0';
+          buffer[strcspn(buffer, "\r\n")] = '\0';
+          printf("%s:%d: %s\n",
+              inet_ntoa(client_addr.sin_addr),
+              ntohs(client_addr.sin_port),
+              buffer);
+        }else if (receive_status == 0) {
+          printf("%s:%d disconnected\n",
+              inet_ntoa(client_addr.sin_addr),
+              ntohs(client_addr.sin_port));
+          break;
+        }else {
+          // Handles both sigint and error
+#ifdef _WIN32
+          int err = WSAGetLastError();
+          if (err == WSAEWOULDBLOCK) {
+            // No data available
+            usleep(100000);
+            continue;
+          } else {
+            printf("recv failed with error: %d\n", err);
+            break;
+          }
+#else
+          if (errno == EAGAIN || errno == EWOULDBLOCK) {
+            // No data available
+            usleep(100000);  // Sleep 100ms to prevent busy loop
+            continue;
+          } else if (errno == EINTR) {
+            // Interrupted by signal, try again
+            continue;
+          } else {
+            perror("read failed");
+            break;
+          }
+#endif
+        }
+      }
     }
   }
 
