@@ -9,7 +9,6 @@
 #include <signal.h>
 #include <errno.h>
 #ifdef _WIN32
-  #include <ws2tcpip.h>
 #else
   #include <netinet/in.h>
   #include <fcntl.h>
