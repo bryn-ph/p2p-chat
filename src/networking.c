@@ -176,7 +176,7 @@ void* listener_thread(void *arg) {
   timeout.tv_usec = 0;
 
 #if _WIN32
-  int ret = select(0, &readfds, NULL, NULL, &timeout);
+  int ret = select(0, &read_fds, NULL, NULL, &timeout);
 #else
   int ret = select(ctx->listening_fd + 1, &read_fds, NULL, NULL, &timeout);
 #endif
