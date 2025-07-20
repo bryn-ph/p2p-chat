@@ -28,7 +28,11 @@ static void on_entry_activate(GtkEntry *entry, gpointer user_data) {
 static void on_button_clicked(GtkButton *button, gpointer user_data) {
   AppContext *ctx = user_data;
   g_print("button pressed!");
+#ifdef _WIN32
+  connect_to_server(ctx, "127.0.0.1");
+#else
   connect_to_server(ctx, "0.0.0.0");
+#endif
 }
 
 static void activate(GtkApplication *app, gpointer user_data) {

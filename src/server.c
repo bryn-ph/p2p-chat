@@ -138,7 +138,7 @@ int main() {
         usleep(100000);
         continue;
       } else {
-        printf("recv failed with error: %d\n", err);
+        perror("recv force shut down occurred\n");
         break;
       }
 #else

@@ -3,6 +3,7 @@
 
 #ifdef _WIN32
   #include <winsock2.h>
+  #include <ws2tcpip.h>
   #define SOCKET_TYPE SOCKET
   #define CLOSE closesocket
 #else
@@ -17,15 +18,24 @@
 
 typedef struct {
   SOCKET_TYPE socket_fd;
-  pthread_t client_thread;
   SOCKET_TYPE listening_fd;
+#ifdef _WIN32
+  HANDLE client_thread;
+  HANDLE listener_thread;
+#else
+  pthread_t client_thread;
   pthread_t listener_thread;
+#endif
   GtkApplication * app;
 } AppContext;
 
 typedef struct {
   SOCKET_TYPE socket_fd;
+#ifdef _WIN32
+  HANDLE thread_id;
+#else
   pthread_t thread_id;
+#endif
   struct sockaddr_in peer_addr;
   socklen_t addr_len;
 } PeerConnection;

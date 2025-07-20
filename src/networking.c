@@ -1,6 +1,5 @@
 #include "networking.h"
 #include "gio/gio.h"
-#include <netinet/in.h>
 #include <pthread.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -12,6 +11,7 @@
 #ifdef _WIN32
   #include <ws2tcpip.h>
 #else
+  #include <netinet/in.h>
   #include <fcntl.h>
   #include <arpa/inet.h>
 #endif
@@ -247,7 +247,7 @@ void* listener_thread(void *arg) {
     }
   }
 
-  CLOSE(ctx->listener_thread);
+  CLOSE(ctx->listening_fd);
   return NULL;
 }
 
@@ -326,9 +326,18 @@ void connect_to_server(AppContext *ctx, char *addr) {
 
   ctx->socket_fd = fd;
 
+#ifdef _WIN32
+  ctx->client_thread = CreateThread(NULL, 0, (LPTHREAD_START_ROUTINE)client_thread, ctx, 0, NULL);
+  if(ctx->client_thread == NULL) {
+    perror("Failed to create client thread\n");
+    CLOSE(fd);
+    g_application_quit(G_APPLICATION(ctx->app));
+  }
+#else
   if (pthread_create(&ctx->client_thread, NULL, client_thread, ctx) != 0) {
     perror("Failed to start client thread");
     CLOSE(fd);
     g_application_quit(G_APPLICATION(ctx->app));
   }
+#endif
 }
