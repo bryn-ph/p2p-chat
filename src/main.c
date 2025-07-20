@@ -26,6 +26,7 @@ int main(int argc, char **argv) {
     if (ctx->client_thread) {
 #ifdef _WIN32
       WaitForSingleObject(ctx->client_thread, 0);
+      CloseHandle(ctx->client_thread);
 #else
       pthread_join(ctx->client_thread, NULL);  
 #endif
@@ -33,6 +34,7 @@ int main(int argc, char **argv) {
     if (ctx->listener_thread) {
 #ifdef _WIN32
       WaitForSingleObject(ctx->listener_thread, 0);
+      CloseHandle(ctx->listener_thread);
 #else
       pthread_join(ctx->listener_thread, NULL);  
 #endif
